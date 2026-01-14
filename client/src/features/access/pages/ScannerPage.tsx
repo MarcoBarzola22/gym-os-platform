@@ -2,14 +2,14 @@ import { useState } from "react";
 import {
   ScannerOverlaySuccess,
   ScannerOverlayError,
-} from "@/components/gym/ScannerOverlay";
+} from "@/features/access/components/ScannerOverlay";
 import { Button } from "@/components/ui/button";
 import { ScanLine, RefreshCw, Dumbbell } from "lucide-react";
 import member1 from "@/assets/member-1.jpg";
 
 type ScanState = "idle" | "success" | "error";
 
-export default function ScannerView() {
+export default function ScannerPage() {
   const [scanState, setScanState] = useState<ScanState>("idle");
 
   const simulateSuccess = () => {

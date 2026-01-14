@@ -7,7 +7,7 @@ const navItems = [
   { path: "/client", label: "App Cliente", icon: Smartphone },
 ];
 
-export function Navigation() {
+export function Sidebar() {
   const location = useLocation();
 
   return (

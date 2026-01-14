@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { Navigation } from "@/components/gym/Navigation";
-import { SearchBar } from "@/components/gym/SearchBar";
-import { MemberTable } from "@/components/gym/MemberTable";
-import { MemberDetailModal } from "@/components/gym/MemberDetailModal";
+import { Sidebar } from "@/components/layout/Sidebar";
+import { SearchBar } from "@/features/admin/components/SearchBar";
+import { MemberTable } from "@/features/admin/components/MemberTable";
+import { MemberDetailModal } from "@/features/admin/components/MemberDetailModal";
 import member1 from "@/assets/member-1.jpg";
 import member2 from "@/assets/member-2.jpg";
 import member3 from "@/assets/member-3.jpg";
@@ -57,7 +57,7 @@ const mockMembers: Member[] = [
   },
 ];
 
-export default function ReceptionDashboard() {
+export default function DashboardPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
@@ -75,7 +75,7 @@ export default function ReceptionDashboard() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navigation />
+      <Sidebar />
 
       <main className="container mx-auto px-4 py-8">
         {/* Header */}

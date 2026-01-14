@@ -1,9 +1,9 @@
-import { Navigation } from "@/components/gym/Navigation";
+import { Sidebar } from "@/components/layout/Sidebar";
 import { Progress } from "@/components/ui/progress";
 import { CheckCircle2, RefreshCw } from "lucide-react";
 import qrPlaceholder from "@/assets/qr-placeholder.png";
 
-export default function ClientApp() {
+export default function ClientHomePage() {
   const memberName = "Carlos";
   const expirationDate = "15/Oct/2025";
   const daysUsed = 10;
@@ -12,7 +12,7 @@ export default function ClientApp() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navigation />
+      <Sidebar />
 
       <main className="container mx-auto px-4 py-8 max-w-md">
         {/* Greeting */}
