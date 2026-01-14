@@ -1,0 +1,48 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// --- MODELOS DEL GIMNASIO ---
+
+model User {
+  id              Int      @id @default(autoincrement())
+  fullName        String
+  dni             String   @unique
+  email           String?  // Opcional
+  photoUrl        String?
+  qrSecret        String?  // Clave secreta para el QR dinámico
+  
+  // Estado de la cuenta
+  isActive        Boolean   @default(true)
+  expirationDate  DateTime? // ¿Hasta cuándo pagó?
+  lastPaymentDate DateTime?
+  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  payments        Payment[]
+  accessLogs      AccessLog[]
+}
+
+model Payment {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id])
+  amount    Decimal  @db.Decimal(10, 2)
+  method    String   // "CASH", "TRANSFER", "MP"
+  date      DateTime @default(now())
+}
+
+model AccessLog {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id])
+  timestamp DateTime @default(now())
+  status    String   // "GRANTED", "DENIED"
+  method    String   // "QR", "MANUAL"
+}
