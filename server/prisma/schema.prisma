@@ -46,3 +46,12 @@ model AccessLog {
   status    String   // "GRANTED", "DENIED"
   method    String   // "QR", "MANUAL"
 }
+
+// Tabla para comunicar el Celular con la PC
+model ScanEvent {
+  id        Int      @id @default(autoincrement())
+  qrContent String   // Lo que leyó el celular
+  scannedAt DateTime @default(now())
+  processed Boolean  @default(false)
+  scannerId String?
+}
