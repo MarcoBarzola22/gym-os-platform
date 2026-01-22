@@ -72,66 +72,62 @@ export default function DashboardPage() {
   };
 
   return (
+    // 1. Agregamos 'flex' para que se pongan lado a lado
     <div className="min-h-screen bg-background flex">
+      
+      {/* El Sidebar se queda quieto a la izquierda */}
       <Sidebar />
 
-      <main className="flex-1 container mx-auto px-4 py-8 overflow-auto">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-extrabold tracking-tight mb-2">
-            Panel de Recepción
-          </h1>
-          <p className="text-muted-foreground text-lg">
-            Gestiona el acceso y los pagos de los socios
-          </p>
-        </div>
-
-        {/* Search Bar */}
-        <div className="mb-10">
-          <SearchBar
-            value={searchQuery}
-            onChange={setSearchQuery}
-            placeholder="Buscar socio por DNI o Nombre..."
-          />
-        </div>
-
-        {/* Tabla de Socios */}
-        <div className="mb-6">
-          <div className="flex items-center justify-between mb-4">
-             <h2 className="text-xl font-bold text-foreground">
-               Socios recientes
-             </h2>
-             {/* Indicador de cantidad */}
-             <span className="text-sm text-muted-foreground bg-slate-100 px-3 py-1 rounded-full">
-               Total: {members.length}
-             </span>
+      {/* 2. IMPORTANTE: Agregamos 'w-full' y un margen/padding si el Sidebar es fijo.
+          Si tu Sidebar es 'fixed', el 'flex' no basta. 
+          Prueba agregando 'pl-64' (padding-left) o 'ml-64' si se sigue viendo montado. */}
+      <main className="flex-1 w-full overflow-y-auto bg-slate-50/50">
+        <div className="container mx-auto px-6 py-8">
+          
+          {/* Header */}
+          <div className="flex justify-between items-center mb-8">
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight text-slate-900">
+                Panel de Recepción
+              </h1>
+              <p className="text-slate-500">
+                Gestiona el acceso y los pagos de los socios
+              </p>
+            </div>
+            {/* Aquí pondremos el botón de crear usuario en la Fase 3 */}
+            <div className="bg-white px-4 py-2 rounded-lg border text-sm font-medium shadow-sm">
+              📅 {new Date().toLocaleDateString()}
+            </div>
           </div>
 
-          {isLoading ? (
-            // Spinner simple mientras carga
-            <div className="flex justify-center py-10">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-            </div>
-          ) : (
-            <MemberTable
-              members={filteredMembers}
-              onMemberClick={handleMemberClick}
+          {/* ... El resto de tu buscador y tabla ... */}
+          <div className="mb-10">
+            <SearchBar 
+              value={searchQuery} 
+              onChange={setSearchQuery} 
+              placeholder="Buscar socio por DNI o Nombre..."
             />
-          )}
-          
-          {!isLoading && filteredMembers.length === 0 && (
-             <p className="text-center text-muted-foreground py-10">
-               No se encontraron socios.
-             </p>
-          )}
-        </div>
+          </div>
 
-        {/* Member detail modal */}
-        <MemberDetailModal
-          member={selectedMember}
-          open={modalOpen}
-          onOpenChange={setModalOpen}
-        />
+          <div className="mb-6">
+             {/* ... Tu lógica de isLoading y Tabla ... */}
+             {isLoading ? (
+                <div className="text-center py-10">Cargando...</div>
+             ) : (
+                <MemberTable 
+                  members={filteredMembers} 
+                  onMemberClick={handleMemberClick} 
+                />
+             )}
+          </div>
+
+          {/* Modal */}
+          <MemberDetailModal
+            member={selectedMember}
+            open={modalOpen}
+            onOpenChange={setModalOpen}
+          />
+        </div>
       </main>
     </div>
   );
