@@ -5,7 +5,7 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('🌱 Iniciando sembrado de datos...');
 
-  // Borrar datos viejos para no repetir
+  // Limpiar datos antiguos (en orden inverso para respetar las relaciones)
   await prisma.scanEvent.deleteMany();
   await prisma.payment.deleteMany();
   await prisma.user.deleteMany();
@@ -16,15 +16,15 @@ async function main() {
       {
         fullName: 'Marco Barzola',
         dni: '12345678',
-        status: 'ACTIVE', // O el campo booleano isActive: true
+        isActive: true, // <--- CORREGIDO: Antes decía status: 'ACTIVE'
         expirationDate: new Date(new Date().setDate(new Date().getDate() + 15)), // Vence en 15 días
         photoUrl: 'https://i.pravatar.cc/150?u=marco',
-        qrSecret: 'JBSWY3DPEHPK3PXP', // Secreto para generar QRs
+        qrSecret: 'JBSWY3DPEHPK3PXP', 
       },
       {
         fullName: 'Juan Pérez',
         dni: '87654321',
-        status: 'INACTIVE', // isActive: false
+        isActive: false, // <--- CORREGIDO: Antes decía status: 'INACTIVE'
         expirationDate: new Date(new Date().setDate(new Date().getDate() - 5)), // Venció hace 5 días
         photoUrl: 'https://i.pravatar.cc/150?u=juan',
         qrSecret: 'KRSXG5CTMVRXEZLU',
@@ -32,7 +32,7 @@ async function main() {
       {
         fullName: 'Maria Gym',
         dni: '11223344',
-        status: 'ACTIVE',
+        isActive: true,
         expirationDate: new Date(new Date().setDate(new Date().getDate() + 30)),
         photoUrl: 'https://i.pravatar.cc/150?u=maria',
         qrSecret: 'NB2HI4DTHIXS633P',
@@ -46,6 +46,7 @@ async function main() {
 main()
   .catch((e) => {
     console.error(e);
+    // process es una variable global de Node, TypeScript ya debería conocerla
     process.exit(1);
   })
   .finally(async () => {

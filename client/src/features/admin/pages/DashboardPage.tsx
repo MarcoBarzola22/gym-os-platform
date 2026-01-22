@@ -1,14 +1,17 @@
-import { useState, useEffect } from "react"; // 1. Importamos useEffect
-import { api } from "@/lib/axios";            // 2. Importamos tu api configurada
+import { useState, useEffect } from "react";
+import { api } from "@/lib/axios";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { SearchBar } from "@/features/admin/components/SearchBar";
 import { MemberTable } from "@/features/admin/components/MemberTable";
 import { MemberDetailModal } from "@/features/admin/components/MemberDetailModal";
-import { toast } from "sonner"; // Para mostrar errores si falla la carga
+import { CreateMemberModal } from "@/features/admin/components/CreateMemberModal"; // <--- Tu nuevo modal
+import { Button } from "@/components/ui/button";
+import { Plus } from "lucide-react";
+import { toast } from "sonner";
 
-// Definimos la interfaz (Ajustada para recibir lo que manda el Backend)
+// Definimos la interfaz del Socio
 export interface Member {
-  id: string; // El backend manda Int, pero aquí lo convertimos o manejamos
+  id: string;
   name: string;
   dni: string;
   photo: string;
@@ -18,115 +21,150 @@ export interface Member {
 }
 
 export default function DashboardPage() {
+  // --- ESTADOS ---
   const [searchQuery, setSearchQuery] = useState("");
-  // 3. Estado para guardar los socios reales que vienen del backend
-  const [members, setMembers] = useState<Member[]>([]); 
-  const [selectedMember, setSelectedMember] = useState<Member | null>(null);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(true); // Estado de carga
+  const [members, setMembers] = useState<Member[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  
+  // Estados de los Modales
+  const [selectedMember, setSelectedMember] = useState<Member | null>(null); // Para ver detalles
+  const [detailModalOpen, setDetailModalOpen] = useState(false);
+  const [createModalOpen, setCreateModalOpen] = useState(false); // Para crear nuevo
 
-  // 4. EL EFECTO MÁGICO: Cargar usuarios al entrar a la página
+  // --- FUNCIÓN DE CARGA DE DATOS ---
+  const fetchUsers = async () => {
+    try {
+      setIsLoading(true);
+      const { data } = await api.get("/users");
+      
+      // Mapeamos los datos del backend a lo que usa el frontend
+      const mappedMembers = data.map((u: any) => ({
+        id: u.id.toString(),
+        name: u.fullName || "Sin Nombre",
+        dni: u.dni,
+        photo: u.photoUrl || `https://ui-avatars.com/api/?name=${u.fullName}&background=random`,
+        status: u.isActive ? "active" : "expired",
+        expirationDate: new Date(u.expirationDate || Date.now()).toLocaleDateString(),
+        streak: 0 
+      }));
+
+      setMembers(mappedMembers);
+    } catch (error) {
+      console.error("Error cargando usuarios:", error);
+      toast.error("Error al conectar con el servidor");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Cargar al iniciar
   useEffect(() => {
-    const fetchUsers = async () => {
-      try {
-        setIsLoading(true);
-        const { data } = await api.get("/users");
-        
-        // 5. TRANSFORMACIÓN DE DATOS (IMPORTANTE)
-        // El backend probablemente manda: { fullName, photoUrl, isActive, ... }
-        // Tu frontend espera: { name, photo, status, ... }
-        // Aquí hacemos el "mapeo" para que no se rompa tu tabla.
-        
-        const mappedMembers = data.map((u: any) => ({
-          id: u.id.toString(),
-          name: u.fullName || "Sin Nombre",
-          dni: u.dni,
-          photo: u.photoUrl || "https://github.com/shadcn.png", // Foto por defecto
-          status: u.isActive ? "active" : "expired", // Convertimos booleano a string
-          expirationDate: new Date(u.expirationDate || Date.now()).toLocaleDateString(),
-          streak: 0 // Por ahora hardcodeado, luego lo calculamos
-        }));
-
-        setMembers(mappedMembers);
-      } catch (error) {
-        console.error("Error cargando usuarios:", error);
-        toast.error("Error al conectar con el servidor");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
     fetchUsers();
-  }, []); // El array vacío [] significa "ejecutar solo una vez al iniciar"
+  }, []);
 
-  // Filtramos sobre el estado 'members' real, no sobre el mock
+  // Filtrado local por buscador
   const filteredMembers = members.filter(
     (member) =>
       member.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       member.dni.includes(searchQuery)
   );
 
+  // Manejador para abrir detalles
   const handleMemberClick = (member: Member) => {
     setSelectedMember(member);
-    setModalOpen(true);
+    setDetailModalOpen(true);
   };
 
   return (
-    // 1. Agregamos 'flex' para que se pongan lado a lado
-    <div className="min-h-screen bg-background flex">
+    <div className="min-h-screen bg-slate-50 relative">
       
-      {/* El Sidebar se queda quieto a la izquierda */}
-      <Sidebar />
+      {/* 1. SIDEBAR FIJO (Izquierda) */}
+      <div className="fixed left-0 top-0 h-full w-64 z-50 hidden md:block shadow-xl">
+        <Sidebar />
+      </div>
 
-      {/* 2. IMPORTANTE: Agregamos 'w-full' y un margen/padding si el Sidebar es fijo.
-          Si tu Sidebar es 'fixed', el 'flex' no basta. 
-          Prueba agregando 'pl-64' (padding-left) o 'ml-64' si se sigue viendo montado. */}
-      <main className="flex-1 w-full overflow-y-auto bg-slate-50/50">
-        <div className="container mx-auto px-6 py-8">
+      {/* 2. CONTENIDO PRINCIPAL (Derecha) */}
+      {/* Usamos md:pl-64 para dejar espacio al sidebar */}
+      <main className="md:pl-64 w-full min-h-screen transition-all">
+        <div className="container mx-auto p-6 space-y-8">
           
-          {/* Header */}
-          <div className="flex justify-between items-center mb-8">
+          {/* HEADER Y BOTÓN DE ACCIÓN */}
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
             <div>
               <h1 className="text-3xl font-bold tracking-tight text-slate-900">
-                Panel de Recepción
+                Recepción
               </h1>
-              <p className="text-slate-500">
-                Gestiona el acceso y los pagos de los socios
+              <p className="text-slate-500 mt-1">
+                Panel de control y accesos
               </p>
             </div>
-            {/* Aquí pondremos el botón de crear usuario en la Fase 3 */}
-            <div className="bg-white px-4 py-2 rounded-lg border text-sm font-medium shadow-sm">
-              📅 {new Date().toLocaleDateString()}
-            </div>
+            
+            {/* BOTÓN + NUEVO SOCIO */}
+            <Button 
+              onClick={() => setCreateModalOpen(true)}
+              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-lg shadow-blue-600/20 px-6 transition-all hover:scale-105"
+            >
+              <Plus className="w-5 h-5 mr-2" />
+              Nuevo Socio
+            </Button>
           </div>
 
-          {/* ... El resto de tu buscador y tabla ... */}
-          <div className="mb-10">
+          {/* BARRA DE BÚSQUEDA */}
+          <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
             <SearchBar 
               value={searchQuery} 
               onChange={setSearchQuery} 
-              placeholder="Buscar socio por DNI o Nombre..."
+              placeholder="🔍 Buscar por DNI, Nombre o Apellido..."
             />
           </div>
 
-          <div className="mb-6">
-             {/* ... Tu lógica de isLoading y Tabla ... */}
+          {/* TABLA DE SOCIOS */}
+          <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden min-h-[400px]">
              {isLoading ? (
-                <div className="text-center py-10">Cargando...</div>
+                <div className="flex flex-col items-center justify-center h-64 gap-3 text-slate-400">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                  <p>Cargando socios...</p>
+                </div>
              ) : (
-                <MemberTable 
-                  members={filteredMembers} 
-                  onMemberClick={handleMemberClick} 
-                />
+                <>
+                  <div className="p-4 border-b border-slate-50 flex justify-between items-center">
+                    <span className="text-sm font-medium text-slate-500">Listado de Miembros</span>
+                    <span className="text-xs bg-slate-100 text-slate-600 px-2 py-1 rounded-full">
+                      Total: {filteredMembers.length}
+                    </span>
+                  </div>
+                  <MemberTable 
+                    members={filteredMembers} 
+                    onMemberClick={handleMemberClick} 
+                  />
+                  {filteredMembers.length === 0 && (
+                    <div className="text-center py-10 text-slate-400">
+                      No se encontraron resultados para "{searchQuery}"
+                    </div>
+                  )}
+                </>
              )}
           </div>
 
-          {/* Modal */}
+          {/* --- MODALES --- */}
+          
+          {/* 1. Modal de Detalles (Ver ficha) */}
           <MemberDetailModal
             member={selectedMember}
-            open={modalOpen}
-            onOpenChange={setModalOpen}
+            open={detailModalOpen}
+            onOpenChange={setDetailModalOpen}
           />
+          
+          {/* 2. Modal de Creación (Nuevo Socio) */}
+          <CreateMemberModal 
+            open={createModalOpen} 
+            onOpenChange={setCreateModalOpen}
+            onSuccess={() => {
+              // Recargamos la lista cuando se crea uno exitosamente
+              fetchUsers();
+            }}
+          />
+
         </div>
       </main>
     </div>
