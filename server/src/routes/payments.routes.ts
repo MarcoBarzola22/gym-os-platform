@@ -1,80 +1,57 @@
 import { Router } from 'express';
-import { prisma } from '../prisma';
+import { PrismaClient } from '@prisma/client';
 
 const router = Router();
+const prisma = new PrismaClient();
 
-// Endpoint: POST /api/payments
-// Descripción: Registra un pago y renueva la suscripción
+// POST /api/payments
+// Renovar suscripción
 router.post('/', async (req, res) => {
   try {
-    // 1. Recibimos los datos del frontend (el "sobre" con el dinero virtual)
-    // method puede ser: "CASH" (Efectivo), "TRANSFER" (Transferencia), etc.
-    const { userId, amount, method } = req.body;
+    const { userId, amount, method } = req.body; // method puede ser 'EFECTIVO', 'TRANSFERENCIA', etc.
 
-    // Validación básica: Si falta algo, devolvemos error
-    if (!userId || !amount || !method) {
-      return res.status(400).json({ message: 'Faltan datos (userId, amount, method)' });
-    }
+    // 1. Buscar al usuario
+    const user = await prisma.user.findUnique({ where: { id: Number(userId) } });
+    if (!user) return res.status(404).json({ error: "Usuario no encontrado" });
 
-    // 2. Buscamos al usuario para ver cuándo vence su cuota ACTUAL
-    const user = await prisma.user.findUnique({ 
-      where: { id: Number(userId) } 
-    });
+    // 2. Calcular nueva fecha
+    // Si ya estaba vencido, cuenta 30 días desde HOY.
+    // Si todavía no vencía, le suma 30 días a lo que le quedaba.
+    const now = new Date();
+    let newExpirationDate = user.expirationDate && user.expirationDate > now 
+      ? new Date(user.expirationDate) 
+      : new Date();
+    
+    newExpirationDate.setDate(newExpirationDate.getDate() + 30);
 
-    if (!user) {
-      return res.status(404).json({ message: 'Usuario no encontrado' });
-    }
-
-    // 3. LÓGICA DE FECHAS (El cerebro de la operación)
-    const now = new Date(); // Fecha de hoy
-    let newExpiration = new Date();
-
-    // CASO A: El usuario todavía está al día (ej: vence mañana)
-    // -> Le sumamos 30 días a su fecha de vencimiento actual (para no robarle días)
-    if (user.expirationDate && user.expirationDate > now) {
-      newExpiration = new Date(user.expirationDate);
-      newExpiration.setDate(newExpiration.getDate() + 30);
-    } 
-    // CASO B: El usuario ya venció o es nuevo
-    // -> Le damos 30 días a partir de HOY
-    else {
-      newExpiration = new Date(); // Empezamos hoy
-      newExpiration.setDate(newExpiration.getDate() + 30);
-    }
-
-    // 4. OPERACIÓN "TODO O NADA" (Transacción implícita)
-    // Usamos prisma.user.update para hacer dos cosas al mismo tiempo:
-    // A) Actualizar al usuario (nueva fecha)
-    // B) Crear el pago en la tabla de pagos (payments)
-    const updatedUser = await prisma.user.update({
-      where: { id: Number(userId) },
-      data: {
-        expirationDate: newExpiration, // Nueva fecha calculada
-        lastPaymentDate: now,          // Pagó hoy
-        isActive: true,                // Por si estaba inactivo, lo reactivamos
-        
-        // ¡Aquí está el truco! Creamos el pago "anidado"
-        payments: {
-          create: {
-            amount: amount,
-            method: method,
-            // la fecha se pone sola en "now()" por defecto en el modelo
-          }
+    // 3. Guardar el pago y actualizar usuario en una "Transacción" (todo o nada)
+    const result = await prisma.$transaction([
+      // A. Crear registro de pago
+      prisma.payment.create({
+        data: {
+          userId: Number(userId),
+          amount: Number(amount),
+          method: method || 'EFECTIVO',
+          date: new Date()
         }
-      }
-    });
+      }),
+      // B. Actualizar usuario
+      prisma.user.update({
+        where: { id: Number(userId) },
+        data: {
+          isActive: true,
+          expirationDate: newExpirationDate,
+          lastPaymentDate: new Date()
+        }
+      })
+    ]);
 
-    // 5. Respondemos con éxito y la nueva fecha
-    res.json({
-      success: true,
-      message: 'Pago registrado exitosamente',
-      newExpiration: updatedUser.expirationDate,
-      user: updatedUser
-    });
+    // Devolvemos el usuario actualizado (el segundo elemento del array transaction)
+    res.json(result[1]);
 
   } catch (error) {
-    console.error('Error registrando pago:', error);
-    res.status(500).json({ message: 'Error interno del servidor' });
+    console.error("Error procesando pago:", error);
+    res.status(500).json({ error: "Error al procesar el pago" });
   }
 });
 

@@ -1,91 +1,101 @@
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useState } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { CreditCard, DoorOpen, Flame } from "lucide-react";
-
-interface Member {
-  id: string;
-  name: string;
-  dni: string;
-  photo: string;
-  status: "active" | "expired";
-  expirationDate: string;
-  streak: number;
-}
+import { Badge } from "@/components/ui/badge";
+import { api } from "@/lib/axios";
+import { toast } from "sonner";
+import { CreditCard, Calendar, User, CheckCircle2 } from "lucide-react";
 
 interface MemberDetailModalProps {
-  member: Member | null;
+  member: any;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
 export function MemberDetailModal({ member, open, onOpenChange }: MemberDetailModalProps) {
+  const [isLoading, setIsLoading] = useState(false);
+
   if (!member) return null;
 
-  const isActive = member.status === "active";
+  const handlePayment = async () => {
+    try {
+      setIsLoading(true);
+      // Cobramos $15.000 (Hardcodeado por ahora, luego puede ser input)
+      await api.post("/payments", {
+        userId: member.id,
+        amount: 15000, 
+        method: "EFECTIVO"
+      });
+
+      toast.success(`¡Pago registrado!`, {
+        description: `${member.name} renovado por 30 días.`,
+      });
+      
+      onOpenChange(false); // Cerramos modal
+      window.location.reload(); // Recarga brutal para actualizar tabla (luego lo mejoramos)
+
+    } catch (error) {
+      console.error(error);
+      toast.error("Error al registrar pago");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl p-0 overflow-hidden rounded-3xl">
-        <div className="flex flex-col md:flex-row">
-          {/* Left side - Photo */}
-          <div className="md:w-1/2 bg-muted">
-            <img
-              src={member.photo}
-              alt={member.name}
-              className="w-full h-64 md:h-full object-cover"
+      <DialogContent className="sm:max-w-[400px]">
+        <DialogHeader className="flex flex-col items-center gap-4">
+          <div className="relative">
+            <img 
+              src={member.photo} 
+              alt={member.name} 
+              className="w-24 h-24 rounded-full border-4 border-slate-100 shadow-lg object-cover"
             />
+            <div className={`absolute bottom-0 right-0 p-1.5 rounded-full border-2 border-white ${member.status === 'active' ? 'bg-green-500' : 'bg-red-500'}`} />
           </div>
+          
+          <div className="text-center">
+            <DialogTitle className="text-2xl font-bold">{member.name}</DialogTitle>
+            <p className="text-slate-500 font-mono mt-1">DNI: {member.dni}</p>
+          </div>
+        </DialogHeader>
 
-          {/* Right side - Details */}
-          <div className="md:w-1/2 p-6 flex flex-col">
-            <DialogHeader className="mb-4">
-              <DialogTitle className="text-3xl font-extrabold tracking-tight">
-                {member.name}
-              </DialogTitle>
-              <p className="text-lg text-muted-foreground font-medium">
-                DNI: {member.dni}
-              </p>
-            </DialogHeader>
-
-            {/* Status indicator */}
-            <div
-              className={`inline-flex items-center gap-3 px-4 py-3 rounded-2xl font-bold text-lg mb-4 w-fit ${
-                isActive ? "status-active" : "status-expired"
-              }`}
-            >
-              <span
-                className={`w-4 h-4 rounded-full ${
-                  isActive ? "bg-success" : "bg-destructive"
-                } animate-pulse`}
-              />
-              {isActive ? "AL DÍA" : "VENCIDO"}
+        <div className="space-y-4 py-4">
+          <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-100">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-white rounded-md shadow-sm">
+                <Calendar className="w-4 h-4 text-blue-600" />
+              </div>
+              <div>
+                <p className="text-xs text-slate-500 font-medium uppercase">Vencimiento</p>
+                <p className="text-sm font-bold text-slate-700">{member.expirationDate}</p>
+              </div>
             </div>
-
-            {/* Expiration date */}
-            <p className="text-muted-foreground mb-2">
-              <span className="font-semibold text-foreground">Vence el:</span>{" "}
-              {member.expirationDate}
-            </p>
-
-            {/* Streak */}
-            <div className="flex items-center gap-2 mb-6 text-lg">
-              <Flame className="w-6 h-6 text-warning" />
-              <span className="font-bold">{member.streak} meses seguidos</span>
-            </div>
-
-            {/* Action buttons */}
-            <div className="mt-auto space-y-3">
-              <Button variant="gymLarge" className="w-full" size="xl">
-                <CreditCard className="w-5 h-5 mr-2" />
-                REGISTRAR PAGO (30 DÍAS)
-              </Button>
-              <Button variant="outline" className="w-full" size="lg">
-                <DoorOpen className="w-5 h-5 mr-2" />
-                INGRESO MANUAL (SIN QR)
-              </Button>
-            </div>
+            {member.status === 'active' ? (
+                <Badge className="bg-green-100 text-green-700 hover:bg-green-200 border-0">Al día</Badge>
+            ) : (
+                <Badge variant="destructive">Vencido</Badge>
+            )}
           </div>
         </div>
+
+        <DialogFooter className="flex-col gap-2 sm:flex-col">
+            <Button 
+              className="w-full bg-green-600 hover:bg-green-700 text-white font-bold h-12 text-md shadow-md shadow-green-600/20"
+              onClick={handlePayment}
+              disabled={isLoading}
+            >
+              {isLoading ? "Procesando..." : (
+                <>
+                  <CreditCard className="mr-2 h-5 w-5" /> Registrar Pago ($15.000)
+                </>
+              )}
+            </Button>
+            <Button variant="ghost" onClick={() => onOpenChange(false)}>
+              Cerrar
+            </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
