@@ -3,6 +3,7 @@ import cors from 'cors';
 import morgan from 'morgan';
 import dotenv from 'dotenv';
 import userRoutes from './routes/userRoutes'; // <--- 1. Importamos las rutas
+import authRoutes from './routes/auth.routes';
 import scanRoutes from './routes/scan.routes';
 import paymentRoutes from './routes/payments.routes';
 
@@ -19,6 +20,7 @@ app.use(morgan('dev'));
 // --- RUTAS ---
 // Aquí decimos: "Todo lo que empiece con /api/users, manéjalo con userRoutes"
 app.use('/api/users', userRoutes); // <--- 2. Usamos las rutas
+app.use('/api/auth', authRoutes);
 app.use('/api/scan-events', scanRoutes);
 app.use('/api/payments', paymentRoutes);
 

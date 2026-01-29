@@ -1,26 +1,56 @@
 import { Router } from 'express';
-import { prisma } from '../prisma'; // Importamos la conexión que creamos en el paso 1
+import { prisma } from '../prisma'; // Asegurate que esta ruta sea correcta según tu estructura
 
 const router = Router();
 
 // Endpoint: GET /
-// Descripción: Obtener todos los usuarios (socios)
+// Descripción: Obtener todos los usuarios
 router.get('/', async (req, res) => {
   try {
-    // 1. Usamos prisma para buscar "muchos" (findMany) registros en la tabla User
-    // Esto es equivalente a hacer un "SELECT * FROM User" en SQL
     const users = await prisma.user.findMany({
-      orderBy: {
-        fullName: 'asc', // Opcional: Los ordenamos alfabéticamente
-      },
+      orderBy: { fullName: 'asc' },
     });
-
-    // 2. Respondemos al frontend con un JSON que contiene la lista
     res.json(users);
   } catch (error) {
-    // 3. Si algo falla (ej. base de datos caída), mostramos error en consola y respondemos 500
     console.error('Error obteniendo usuarios:', error);
     res.status(500).json({ message: 'Error interno del servidor' });
+  }
+});
+
+// Endpoint: POST /
+// Descripción: Crear un nuevo usuario (Registro Rápido)
+router.post('/', async (req, res) => {
+  try {
+    const { fullName, dni, email } = req.body;
+
+    // 1. Calculamos vencimiento (30 días desde hoy)
+    const expirationDate = new Date();
+    expirationDate.setDate(expirationDate.getDate() + 30);
+
+    // 2. Generamos el secreto para el QR (Cadena aleatoria simple)
+    // Esto crea un texto random tipo "a1b2c3d4e5..."
+    const randomSecret = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+
+    // 3. Creamos el usuario en la DB
+    const newUser = await prisma.user.create({
+      data: {
+        fullName,
+        dni,
+        email: email || null,
+        password: dni,          // <--- La contraseña inicial es el DNI
+        qrSecret: randomSecret, // <--- Guardamos la llave para el modo offline
+        isActive: true,         // Nace activo
+        expirationDate: expirationDate,
+        // Generamos una foto automática (Avatar con iniciales)
+        photoUrl: `https://ui-avatars.com/api/?name=${fullName.replace(" ", "+")}&background=random`
+      }
+    });
+
+    res.status(201).json(newUser);
+  } catch (error) {
+    console.error("Error creando usuario:", error);
+    // Si el error es P2002 (Unique constraint), es que el DNI ya existe
+    res.status(400).json({ error: "No se pudo crear. ¿El DNI ya existe?" });
   }
 });
 

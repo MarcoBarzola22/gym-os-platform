@@ -10,12 +10,17 @@ datasource db {
 // --- MODELOS DEL GIMNASIO ---
 
 model User {
-  id              Int      @id @default(autoincrement())
+  id              Int       @id @default(autoincrement())
   fullName        String
-  dni             String   @unique
-  email           String?  // Opcional
+  dni             String    @unique
+  
+  // 👇 AGREGA ESTA LÍNEA 👇
+  password        String    @default("123456") 
+  
+
+  email           String?   // Opcional
   photoUrl        String?
-  qrSecret        String?  // Clave secreta para el QR dinámico
+  qrSecret        String?   // Clave secreta para el QR dinámico
   
   // Estado de la cuenta
   isActive        Boolean   @default(true)
