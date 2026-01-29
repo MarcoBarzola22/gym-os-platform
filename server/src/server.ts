@@ -6,6 +6,7 @@ import userRoutes from './routes/userRoutes'; // <--- 1. Importamos las rutas
 import authRoutes from './routes/auth.routes';
 import scanRoutes from './routes/scan.routes';
 import paymentRoutes from './routes/payments.routes';
+import accessRoutes from './routes/access.routes';
 
 dotenv.config();
 
@@ -23,6 +24,7 @@ app.use('/api/users', userRoutes); // <--- 2. Usamos las rutas
 app.use('/api/auth', authRoutes);
 app.use('/api/scan-events', scanRoutes);
 app.use('/api/payments', paymentRoutes);
+app.use('/api/access', accessRoutes);
 
 // Rutas de prueba (la que ya tenías)
 app.get('/', (req, res) => {

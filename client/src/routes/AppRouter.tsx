@@ -1,32 +1,47 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 
-// Importamos solo lo que NECESITAMOS
+// 1. Importamos las páginas
 import DashboardPage from "@/features/admin/pages/DashboardPage";
 import ClientHomePage from "@/features/client/pages/ClientHomePage";
-import ScannerPage from "@/features/access/pages/ScannerPage"; // Opcional, por si queremos pantalla completa
-// import LoginPage from "@/features/auth/pages/LoginPage"; // (Descomentar cuando creemos el Login)
+import LoginPage from "@/features/auth/pages/LoginPage"; // <--- La que acabamos de crear
+import ScannerPage from "@/features/access/pages/ScannerPage";
+
+// 2. Componente para proteger la ruta del cliente
+// Si no tiene datos guardados, lo manda al Login
+const ProtectedClientRoute = ({ children }: { children: JSX.Element }) => {
+  const user = localStorage.getItem("gym_user");
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+  return children;
+};
 
 export const AppRouter = () => {
   return (
     <BrowserRouter>
       <Routes>
-        {/* --- RUTA 1: EL CLIENTE (HOME) --- */}
-        {/* Aquí entrará el socio con su celular */}
-        <Route path="/" element={<ClientHomePage />} />
+        {/* --- RUTA 1: LOGIN (Pública) --- */}
+        <Route path="/login" element={<LoginPage />} />
 
-        {/* --- RUTA 2: EL GIMNASIO (ADMIN) --- */}
-        {/* Aquí entra el recepcionista */}
+        {/* --- RUTA 2: CLIENTE (Protegida) --- */}
+        {/* Solo entra si ya se logueó antes */}
+        <Route 
+          path="/" 
+          element={
+            <ProtectedClientRoute>
+              <ClientHomePage />
+            </ProtectedClientRoute>
+          } 
+        />
+
+        {/* --- RUTA 3: ADMIN (Pública por ahora) --- */}
         <Route path="/admin" element={<DashboardPage />} />
 
-        {/* --- RUTA 3: ESCÁNER DEDICADO (Opcional) --- */}
-        {/* Por si quieren usar un celu exclusivo como cámara */}
+        {/* --- EXTRAS --- */}
         <Route path="/scanner" element={<ScannerPage />} />
-
-        {/* --- RUTA 4: LOGIN (Próximamente) --- */}
-        {/* <Route path="/login" element={<LoginPage />} /> */}
-
-        {/* CUALQUIER OTRA COSA -> Mandar al Home */}
-        <Route path="*" element={<Navigate to="/" replace />} />
+        
+        {/* Cualquier ruta desconocida -> Mandar al Login */}
+        <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </BrowserRouter>
   );
