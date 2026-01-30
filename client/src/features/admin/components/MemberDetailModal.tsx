@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { api } from "@/lib/axios";
 import { toast } from "sonner";
 import { CreditCard, Calendar, User, CheckCircle2 } from "lucide-react";
+import { differenceInDays } from "date-fns";
 
 interface MemberDetailModalProps {
   member: any;
@@ -33,7 +34,7 @@ export function MemberDetailModal({ member, open, onOpenChange }: MemberDetailMo
       
       onOpenChange(false); // Cerramos modal
       window.location.reload(); // Recarga brutal para actualizar tabla (luego lo mejoramos)
-
+      
     } catch (error) {
       console.error(error);
       toast.error("Error al registrar pago");
@@ -41,6 +42,7 @@ export function MemberDetailModal({ member, open, onOpenChange }: MemberDetailMo
       setIsLoading(false);
     }
   };
+  const daysLeft = differenceInDays(new Date(member.rawExpiration), new Date());
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -70,6 +72,9 @@ export function MemberDetailModal({ member, open, onOpenChange }: MemberDetailMo
               <div>
                 <p className="text-xs text-slate-500 font-medium uppercase">Vencimiento</p>
                 <p className="text-sm font-bold text-slate-700">{member.expirationDate}</p>
+                <p className={`text-xs font-bold ${daysLeft < 0 ? 'text-red-500' : 'text-blue-600'}`}>
+                   {daysLeft < 0 ? `Venció hace ${Math.abs(daysLeft)} días` : `Quedan ${daysLeft} días`}
+                </p>
               </div>
             </div>
             {member.status === 'active' ? (

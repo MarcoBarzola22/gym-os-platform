@@ -5,6 +5,22 @@ import * as OTPAuth from 'otpauth';
 const router = Router();
 const prisma = new PrismaClient();
 
+router.get('/logs', async (req, res) => {
+  try {
+    const logs = await prisma.accessLog.findMany({
+      take: 10,                 // Solo los últimos 10
+      orderBy: { timestamp: 'desc' }, // Del más nuevo al más viejo
+      include: { 
+        user: {                 // Incluimos el nombre del usuario
+          select: { fullName: true, dni: true } 
+        } 
+      }
+    });
+    res.json(logs);
+  } catch (error) {
+    res.status(500).json({ message: 'Error obteniendo historial' });
+  }
+});
 // POST /api/access/validate
 router.post('/validate', async (req, res) => {
   try {

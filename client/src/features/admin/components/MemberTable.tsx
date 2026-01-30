@@ -1,5 +1,6 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { differenceInDays } from "date-fns";
 
 interface Member {
   id: string;
@@ -31,6 +32,10 @@ export function MemberTable({ members, onMemberClick }: MemberTableProps) {
               </th>
               <th className="text-left py-4 px-6 font-semibold text-muted-foreground">
                 Estado
+              </th>
+              {/* --- NUEVA COLUMNA --- */}
+              <th className="text-left py-4 px-6 font-semibold text-muted-foreground">
+                Vencimiento
               </th>
             </tr>
           </thead>
@@ -70,6 +75,22 @@ export function MemberTable({ members, onMemberClick }: MemberTableProps) {
                   >
                     {member.status === "active" ? "Al día" : "Vencido"}
                   </Badge>
+                </td>
+                {/* --- NUEVA CELDA CON EL CÁLCULO DE DÍAS --- */}
+                <td className="py-4 px-6">
+                  {member.expirationDate ? (
+                    (() => {
+                      const days = differenceInDays(new Date(member.expirationDate), new Date());
+                      const isExpired = days < 0;
+                      return (
+                        <span className={`font-bold ${isExpired ? "text-destructive" : "text-success"}`}>
+                          {isExpired ? `Venció hace ${Math.abs(days)} días` : `Quedan ${days} días`}
+                        </span>
+                      );
+                    })()
+                  ) : (
+                    <span className="text-muted-foreground">Sin fecha</span>
+                  )}
                 </td>
               </tr>
             ))}

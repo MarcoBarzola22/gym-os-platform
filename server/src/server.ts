@@ -26,6 +26,7 @@ app.use('/api/scan-events', scanRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/access', accessRoutes);
 
+
 // Rutas de prueba (la que ya tenías)
 app.get('/', (req, res) => {
   res.json({ message: 'GymOS API is running 🚀' });

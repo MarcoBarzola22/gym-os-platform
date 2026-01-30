@@ -5,6 +5,7 @@ import * as OTPAuth from "otpauth";
 import { Button } from "@/components/ui/button";
 import { LogOut, WifiOff, Sparkles, User, CreditCard } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { differenceInDays } from "date-fns";
 
 export default function ClientHomePage() {
   const navigate = useNavigate();
@@ -68,6 +69,10 @@ export default function ClientHomePage() {
   if (!user) return <div className="min-h-screen bg-slate-950 flex items-center justify-center text-blue-500">Cargando pase...</div>;
 
   const isActive = user.status === 'active';
+  // CÁLCULO MATEMÁTICO
+  const daysLeftForUser = user.expirationDate 
+    ? differenceInDays(new Date(user.expirationDate), new Date()) 
+    : 0;
 
   return (
     <div className="min-h-screen bg-slate-950 text-white flex flex-col relative overflow-hidden font-sans">
@@ -123,6 +128,9 @@ export default function ClientHomePage() {
                                 ) : (
                                     <span className="text-red-400 flex items-center gap-1">● Membresía Vencida</span>
                                 )}
+                            </p>
+                            <p className={`text-xs font-bold mt-1 ${daysLeftForUser < 5 ? 'text-orange-400' : 'text-slate-500'}`}>
+                              ({daysLeftForUser < 0 ? "Vencido" : `Te quedan ${daysLeftForUser} días`})
                             </p>
                         </div>
                     </div>

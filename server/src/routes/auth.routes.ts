@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { PrismaClient } from '@prisma/client';
+import bcrypt from 'bcryptjs';
 
 const router = Router();
 const prisma = new PrismaClient(); // Puedes usar 'import { prisma } from '../prisma';' si prefieres centralizarlo
@@ -16,6 +17,14 @@ router.post('/login', async (req, res) => {
     if (!user || user.password !== password) {
       return res.status(401).json({ error: 'DNI o contraseña incorrectos' });
     }
+    // 2. COMPARACIÓN SEGURA
+    // Si la contraseña en la BD ya está encriptada (empieza con $2b$...), usamos compare
+    // Si es vieja (texto plano), comparamos directo (esto permite migrar gradualmente)
+    const isMatch = user.password.startsWith('$2b$') 
+      ? await bcrypt.compare(password, user.password)
+      : user.password === password;
+
+    if (!isMatch) return res.status(401).json({ message: 'Contraseña incorrecta' });
 
     // 3. RESPUESTA AL FRONTEND
     res.json({

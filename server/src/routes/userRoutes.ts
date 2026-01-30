@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { prisma } from '../prisma'; // Asegurate que esta ruta sea correcta según tu estructura
+import bcrypt from 'bcryptjs';
 
 const router = Router();
 
@@ -52,6 +53,20 @@ router.post('/', async (req, res) => {
     // Si el error es P2002 (Unique constraint), es que el DNI ya existe
     res.status(400).json({ error: "No se pudo crear. ¿El DNI ya existe?" });
   }
+
+
+  router.post('/', async (req, res) => {
+    const { password, ...rest } = req.body;
+    const hashedPassword = await bcrypt.hash(password, 10); // <--- Hashing
+    
+    const newUser = await prisma.user.create({
+      data: { 
+        ...rest, 
+        password: hashedPassword 
+      }
+    });
+    // ...
+  });
 });
 
 export default router;

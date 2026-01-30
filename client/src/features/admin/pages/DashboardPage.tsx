@@ -9,6 +9,7 @@ import { DashboardScanner } from "../components/DashboardScanner";
 import { Button } from "@/components/ui/button";
 import { Plus, Bell } from "lucide-react";
 import { toast } from "sonner";
+import { differenceInDays } from "date-fns";
 
 export interface Member {
   id: string;
@@ -17,6 +18,7 @@ export interface Member {
   photo: string;
   status: "active" | "expired";
   expirationDate: string;
+  rawExpiration: string;
   streak: number;
 }
 
@@ -28,6 +30,10 @@ export default function DashboardPage() {
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [createModalOpen, setCreateModalOpen] = useState(false); 
+  const [logs, setLogs] = useState([]);
+
+  api.get("/access/logs").then(({ data }) => setLogs(data));
+
 
   const fetchUsers = async () => {
     try {
@@ -39,7 +45,8 @@ export default function DashboardPage() {
         dni: u.dni,
         photo: u.photoUrl || `https://ui-avatars.com/api/?name=${u.fullName}&background=random`,
         status: u.isActive ? "active" : "expired",
-        expirationDate: new Date(u.expirationDate || Date.now()).toLocaleDateString(),
+        expirationDate: new Date(u.expirationDate || Date.now()).toLocaleDateString(), // Para mostrar
+        rawExpiration: u.expirationDate || new Date().toISOString(), // Para calcular
         streak: 0 
       }));
       setMembers(mappedMembers);
@@ -143,6 +150,36 @@ export default function DashboardPage() {
           {/* --- MODALES --- */}
           <MemberDetailModal member={selectedMember} open={detailModalOpen} onOpenChange={setDetailModalOpen} />
           <CreateMemberModal open={createModalOpen} onOpenChange={setCreateModalOpen} onSuccess={() => fetchUsers()} />
+
+          <div className="bg-white p-4 rounded-lg shadow mt-6">
+            <h2 className="text-xl font-bold mb-4">Últimos Ingresos</h2>
+            <table className="w-full">
+              <thead>
+                <tr className="text-left text-gray-500">
+                  <th>Hora</th>
+                  <th>Usuario</th>
+                  <th>Estado</th>
+                </tr>
+              </thead>
+              <tbody>
+                {logs.map((log: any) => (
+                  <tr key={log.id} className="border-t">
+                    <td className="py-2">
+                      {new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </td>
+                    <td className="py-2 font-medium">{log.user?.fullName || 'Desconocido'}</td>
+                    <td className="py-2">
+                      <span className={`px-2 py-1 rounded text-xs ${
+                        log.status === 'GRANTED' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                      }`}>
+                        {log.status === 'GRANTED' ? 'Permitido' : 'Rechazado'}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
 
         </div>
       </main>
