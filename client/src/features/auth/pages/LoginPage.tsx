@@ -3,9 +3,8 @@ import { api } from "@/lib/axios";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Lock, User } from "lucide-react";
+import { Loader2, ArrowRight, Lock, User } from "lucide-react";
 
 export default function LoginPage() {
   const [dni, setDni] = useState("");
@@ -18,70 +17,114 @@ export default function LoginPage() {
     setIsLoading(true);
     
     try {
-      // 1. Preguntamos al backend si las credenciales son válidas
       const { data } = await api.post("/auth/login", { dni, password });
       
-      // 2. ¡ÉXITO! Guardamos al usuario y su SECRETO en el celular
+      // Guardamos sesión
       localStorage.setItem("gym_user", JSON.stringify(data));
       
-      toast.success(`Hola de nuevo, ${data.name.split(" ")[0]}`);
+      toast.success(`Bienvenido, ${data.name.split(" ")[0]}`);
       
-      // 3. Lo mandamos directo a ver su QR
-      navigate("/"); 
+     // Guardamos sesión
+      localStorage.setItem("gym_user", JSON.stringify(data));
+      
+      toast.success(`Bienvenido, ${data.name.split(" ")[0]}`);
+      
+      // 👇👇👇 AQUÍ ESTÁ EL CAMBIO 👇👇👇
+      if (data.role === 'ADMIN') {
+        navigate("/admin");
+      } else {
+        navigate("/");
+      }
+      // 👆👆👆 FIN DEL CAMBIO 👆👆👆
       
     } catch (error) {
       console.error(error);
-      toast.error("DNI o Contraseña incorrectos");
+      toast.error("Datos incorrectos", {
+        description: "Revisa tu DNI o contraseña."
+      });
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-900 p-4">
-      <Card className="w-full max-w-sm shadow-2xl border-slate-800 bg-slate-950 text-white">
-        <CardHeader className="text-center space-y-3">
-          <div className="mx-auto w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-900/20">
-            <span className="text-white font-black text-3xl tracking-tighter">G</span>
+    <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-6 relative overflow-hidden">
+      
+      {/* Fondo Ambiental */}
+      <div className="absolute top-[-20%] right-[-20%] w-[80%] h-[80%] bg-blue-600/10 blur-[120px] rounded-full pointer-events-none" />
+      <div className="absolute bottom-[-20%] left-[-20%] w-[80%] h-[80%] bg-indigo-600/10 blur-[120px] rounded-full pointer-events-none" />
+
+      {/* Contenedor Principal */}
+      <div className="w-full max-w-sm z-10 space-y-8">
+        
+        {/* Logo y Título */}
+        <div className="text-center space-y-2">
+          <div className="mx-auto h-16 w-16 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-900/40 mb-6">
+            <span className="text-white font-bold text-3xl">G</span>
           </div>
-          <div>
-            <CardTitle className="text-2xl font-bold">Bienvenido Socio</CardTitle>
-            <CardDescription className="text-slate-400">Ingresa para ver tu pase de acceso</CardDescription>
+          <h1 className="text-3xl font-bold text-white tracking-tight">Bienvenido</h1>
+          <p className="text-slate-400 text-sm">Ingresa a tu portal de socio</p>
+        </div>
+
+        {/* Formulario */}
+        <form onSubmit={handleLogin} className="space-y-4">
+          
+          <div className="space-y-4 bg-white/5 p-1 rounded-2xl border border-white/10 backdrop-blur-sm">
+            <div className="relative group">
+              <User className="absolute left-4 top-3.5 h-5 w-5 text-slate-500 group-focus-within:text-blue-500 transition-colors" />
+              <Input 
+                placeholder="DNI / Usuario" 
+                value={dni} 
+                onChange={(e) => setDni(e.target.value)} 
+                className="pl-12 bg-transparent border-transparent text-white placeholder:text-slate-600 h-12 focus-visible:ring-0 focus-visible:bg-white/5 rounded-xl transition-all"
+                type="number"
+                autoFocus
+              />
+            </div>
+            
+            <div className="h-[1px] bg-white/10 mx-2" /> {/* Separador sutil */}
+
+            <div className="relative group">
+              <Lock className="absolute left-4 top-3.5 h-5 w-5 text-slate-500 group-focus-within:text-blue-500 transition-colors" />
+              <Input 
+                placeholder="Contraseña" 
+                type="password"
+                value={password} 
+                onChange={(e) => setPassword(e.target.value)}
+                className="pl-12 bg-transparent border-transparent text-white placeholder:text-slate-600 h-12 focus-visible:ring-0 focus-visible:bg-white/5 rounded-xl transition-all"
+              />
+            </div>
           </div>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleLogin} className="space-y-4">
-            <div className="space-y-2">
-              <div className="relative">
-                <User className="absolute left-3 top-3 h-4 w-4 text-slate-500" />
-                <Input 
-                  placeholder="Tu DNI" 
-                  value={dni} 
-                  onChange={(e) => setDni(e.target.value)} 
-                  className="pl-10 bg-slate-900 border-slate-800 focus:border-blue-600 text-white"
-                  type="number"
-                  autoFocus
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <div className="relative">
-                <Lock className="absolute left-3 top-3 h-4 w-4 text-slate-500" />
-                <Input 
-                  placeholder="Contraseña (Tu DNI)" 
-                  type="password"
-                  value={password} 
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="pl-10 bg-slate-900 border-slate-800 focus:border-blue-600 text-white"
-                />
-              </div>
-            </div>
-            <Button className="w-full bg-blue-600 hover:bg-blue-700 font-bold h-11" type="submit" disabled={isLoading}>
-              {isLoading ? "Entrando..." : "Ver mi Pase QR"}
+
+          <div className="pt-2">
+            <Button 
+                className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold h-14 rounded-xl shadow-lg shadow-blue-900/20 text-lg transition-all hover:scale-[1.02] active:scale-[0.98]" 
+                type="submit" 
+                disabled={isLoading}
+            >
+              {isLoading ? (
+                <Loader2 className="animate-spin" />
+              ) : (
+                <div className="flex items-center gap-2">
+                    Ingresar <ArrowRight className="w-5 h-5" />
+                </div>
+              )}
             </Button>
-          </form>
-        </CardContent>
-      </Card>
+          </div>
+
+        </form>
+
+        <p className="text-center text-slate-500 text-xs">
+            ¿Olvidaste tu clave? Pídela en recepción.
+        </p>
+
+      </div>
+      
+      {/* Footer legal */}
+      <p className="absolute bottom-6 text-slate-600 text-[10px] font-medium tracking-widest uppercase opacity-50">
+        GymOS Platform © 2026
+      </p>
+
     </div>
   );
 }

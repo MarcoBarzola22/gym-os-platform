@@ -1,18 +1,31 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-
-// 1. Importamos las páginas
 import DashboardPage from "@/features/admin/pages/DashboardPage";
 import ClientHomePage from "@/features/client/pages/ClientHomePage";
-import LoginPage from "@/features/auth/pages/LoginPage"; // <--- La que acabamos de crear
+import LoginPage from "@/features/auth/pages/LoginPage";
 import ScannerPage from "@/features/access/pages/ScannerPage";
 
-// 2. Componente para proteger la ruta del cliente
-// Si no tiene datos guardados, lo manda al Login
+// --- GUARDIA DE SOCIOS (Ya lo tenías) ---
 const ProtectedClientRoute = ({ children }: { children: JSX.Element }) => {
   const user = localStorage.getItem("gym_user");
-  if (!user) {
-    return <Navigate to="/login" replace />;
+  if (!user) return <Navigate to="/login" replace />;
+  return children;
+};
+
+// --- NUEVO: GUARDIA DE ADMINS 👮‍♂️ ---
+const ProtectedAdminRoute = ({ children }: { children: JSX.Element }) => {
+  const userString = localStorage.getItem("gym_user");
+  
+  // 1. Si no está logueado -> Al Login
+  if (!userString) return <Navigate to="/login" replace />;
+  
+  const user = JSON.parse(userString);
+
+  // 2. Si está logueado pero NO es ADMIN -> Al Home de Cliente
+  if (user.role !== 'ADMIN') {
+    return <Navigate to="/" replace />;
   }
+
+  // 3. Pase, jefe.
   return children;
 };
 
@@ -20,11 +33,9 @@ export const AppRouter = () => {
   return (
     <BrowserRouter>
       <Routes>
-        {/* --- RUTA 1: LOGIN (Pública) --- */}
         <Route path="/login" element={<LoginPage />} />
 
-        {/* --- RUTA 2: CLIENTE (Protegida) --- */}
-        {/* Solo entra si ya se logueó antes */}
+        {/* Ruta Cliente (Cualquiera logueado entra) */}
         <Route 
           path="/" 
           element={
@@ -34,13 +45,18 @@ export const AppRouter = () => {
           } 
         />
 
-        {/* --- RUTA 3: ADMIN (Pública por ahora) --- */}
-        <Route path="/admin" element={<DashboardPage />} />
-
-        {/* --- EXTRAS --- */}
-        <Route path="/scanner" element={<ScannerPage />} />
+        {/* Ruta Admin (SOLO ADMINS) */}
+        <Route 
+          path="/admin" 
+          element={
+            <ProtectedAdminRoute>
+              <DashboardPage />
+            </ProtectedAdminRoute>
+          } 
+        />
         
-        {/* Cualquier ruta desconocida -> Mandar al Login */}
+        {/* Rutas extra */}
+        <Route path="/scanner" element={<ScannerPage />} />
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </BrowserRouter>

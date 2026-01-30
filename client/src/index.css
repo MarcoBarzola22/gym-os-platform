@@ -106,6 +106,15 @@
 }
 
 @layer base {
+  /* 👇 AGREGAR ESTO PARA QUITAR BORDES Y HACER FULL SCREEN 👇 */
+  html, body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    overflow-x: hidden;
+  }
+
   * {
     @apply border-border;
   }

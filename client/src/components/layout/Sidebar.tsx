@@ -1,51 +1,49 @@
-import { Link, useLocation } from "react-router-dom";
-import { LayoutDashboard, ScanLine, Smartphone, Dumbbell } from "lucide-react";
-
-const navItems = [
-  { path: "/", label: "Recepción", icon: LayoutDashboard },
-  { path: "/scanner", label: "Escáner", icon: ScanLine },
-  { path: "/client", label: "App Cliente", icon: Smartphone },
-];
+import { NavLink } from "react-router-dom";
+import { LayoutDashboard, LogOut } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 export function Sidebar() {
-  const location = useLocation();
-
   return (
-    <nav className="bg-card border-b border-border sticky top-0 z-50">
-      <div className="container mx-auto px-4">
-        <div className="flex items-center justify-between h-16">
-          {/* Logo */}
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center">
-              <Dumbbell className="w-6 h-6 text-primary-foreground" />
-            </div>
-            <span className="text-xl font-extrabold tracking-tight text-foreground">
-              GymFlow
-            </span>
-          </div>
-
-          {/* Navigation links */}
-          <div className="flex items-center gap-1">
-            {navItems.map((item) => {
-              const isActive = location.pathname === item.path;
-              return (
-                <Link
-                  key={item.path}
-                  to={item.path}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium transition-all duration-200 ${
-                    isActive
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                  }`}
-                >
-                  <item.icon className="w-4 h-4" />
-                  <span className="hidden sm:inline">{item.label}</span>
-                </Link>
-              );
-            })}
-          </div>
+    <aside className="h-full w-full bg-slate-900 text-slate-300 flex flex-col border-r border-slate-800">
+      
+      {/* LOGO */}
+      <div className="p-6 flex items-center gap-3">
+        <div className="h-8 w-8 bg-blue-600 rounded-lg flex items-center justify-center shadow-lg shadow-blue-900/50">
+          <span className="text-white font-bold text-lg">G</span>
         </div>
+        <span className="text-white font-bold text-xl tracking-tight">GymOS</span>
       </div>
-    </nav>
+
+      {/* MENÚ PRINCIPAL */}
+      <nav className="flex-1 px-4 space-y-2 mt-4">
+        <p className="px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
+          Panel de Control
+        </p>
+        
+        {/* Único enlace necesario por ahora */}
+        <NavLink 
+          to="/admin"
+          className={({ isActive }) => `
+            flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200
+            ${isActive ? "bg-blue-600 text-white shadow-md shadow-blue-900/20" : "hover:bg-slate-800 hover:text-white"}
+          `}
+        >
+          <LayoutDashboard size={20} />
+          <span className="font-medium text-sm">Recepción</span>
+        </NavLink>
+      </nav>
+
+      {/* FOOTER */}
+      <div className="p-4 border-t border-slate-800">
+        <Button 
+            variant="ghost" 
+            className="w-full justify-start text-slate-400 hover:text-white hover:bg-slate-800 pl-4 gap-3"
+            onClick={() => window.location.href = '/login'} // Salir simple
+        >
+          <LogOut size={20} />
+          <span className="font-medium text-sm">Cerrar Sesión</span>
+        </Button>
+      </div>
+    </aside>
   );
 }
