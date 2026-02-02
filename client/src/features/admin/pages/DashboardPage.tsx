@@ -7,9 +7,8 @@ import { MemberDetailModal } from "@/features/admin/components/MemberDetailModal
 import { CreateMemberModal } from "@/features/admin/components/CreateMemberModal"; 
 import { DashboardScanner } from "../components/DashboardScanner";
 import { Button } from "@/components/ui/button";
-import { Plus, Bell } from "lucide-react";
+import { Plus, Bell, History } from "lucide-react";
 import { toast } from "sonner";
-import { differenceInDays } from "date-fns";
 
 export interface Member {
   id: string;
@@ -19,6 +18,7 @@ export interface Member {
   status: "active" | "expired";
   expirationDate: string;
   rawExpiration: string;
+  lastPaymentDate: string;
   streak: number;
 }
 
@@ -32,9 +32,6 @@ export default function DashboardPage() {
   const [createModalOpen, setCreateModalOpen] = useState(false); 
   const [logs, setLogs] = useState([]);
 
-  api.get("/access/logs").then(({ data }) => setLogs(data));
-
-
   const fetchUsers = async () => {
     try {
       setIsLoading(true);
@@ -45,8 +42,9 @@ export default function DashboardPage() {
         dni: u.dni,
         photo: u.photoUrl || `https://ui-avatars.com/api/?name=${u.fullName}&background=random`,
         status: u.isActive ? "active" : "expired",
-        expirationDate: new Date(u.expirationDate || Date.now()).toLocaleDateString(), // Para mostrar
-        rawExpiration: u.expirationDate || new Date().toISOString(), // Para calcular
+        expirationDate: new Date(u.expirationDate || Date.now()).toLocaleDateString(),
+        rawExpiration: u.expirationDate || new Date().toISOString(),
+        lastPaymentDate: u.lastPaymentDate ? new Date(u.lastPaymentDate).toLocaleDateString() : "Sin pagos",
         streak: 0 
       }));
       setMembers(mappedMembers);
@@ -58,7 +56,10 @@ export default function DashboardPage() {
     }
   };
 
-  useEffect(() => { fetchUsers(); }, []);
+  useEffect(() => {
+    fetchUsers();
+    api.get("/access/logs").then(({ data }) => setLogs(data)).catch(() => {});
+  }, []);
 
   const filteredMembers = members.filter((member) =>
     member.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -82,11 +83,11 @@ export default function DashboardPage() {
       <main className="flex-1 md:pl-64 w-full">
         <div className="max-w-7xl mx-auto p-8 space-y-8">
           
-          {/* --- HEADER LIMPIO --- */}
+          {/* --- HEADER --- */}
           <div className="flex flex-col md:flex-row justify-between items-end md:items-center gap-4">
             <div>
               <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Panel de Recepción</h1>
-              <p className="text-slate-500 text-sm mt-1">Viernes, 29 de Enero</p>
+              <p className="text-slate-500 text-sm mt-1">Gestión de Socios</p>
             </div>
 
             <div className="flex items-center gap-3">
@@ -104,7 +105,6 @@ export default function DashboardPage() {
           </div>
 
           {/* --- BUSCADOR --- */}
-          {/* Le quitamos el fondo blanco para que flote en el gris */}
           <div className="max-w-md">
             <SearchBar 
               value={searchQuery} 
@@ -114,35 +114,95 @@ export default function DashboardPage() {
           </div>
 
           {/* --- GRID PRINCIPAL --- */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
             
-            {/* TABLA (Ocupa 2 espacios) */}
-            <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-slate-200/60 overflow-hidden min-h-[500px]">
-               {isLoading ? (
-                  <div className="flex flex-col items-center justify-center h-64 text-slate-400 gap-2">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                    <p className="text-sm">Cargando base de datos...</p>
-                  </div>
-               ) : (
-                  <MemberTable 
-                    members={filteredMembers} 
-                    onMemberClick={handleMemberClick} 
-                  />
-               )}
-            </div>
-
-            {/* CÁMARA (Ocupa 1 espacio) */}
-            <div className="lg:col-span-1 h-auto"> 
-               <DashboardScanner /> 
+            {/* COLUMNA IZQUIERDA (TABLAS) - Ocupa 2 espacios */}
+            <div className="lg:col-span-2 space-y-6">
                
-               {/* Un widget extra de estadísticas rápidas debajo de la cámara */}
-               <div className="mt-6 bg-blue-600 rounded-2xl p-6 text-white shadow-xl shadow-blue-600/20">
-                  <p className="text-blue-100 text-sm font-medium mb-1">Socios Activos</p>
-                  <p className="text-4xl font-bold">{members.filter(m => m.status === 'active').length}</p>
-                  <div className="mt-4 text-xs text-blue-200 bg-blue-500/30 inline-block px-2 py-1 rounded-lg">
-                    +2 hoy
+               {/* 1. TABLA DE SOCIOS */}
+               <div className="bg-white rounded-2xl shadow-sm border border-slate-200/60 overflow-hidden min-h-[500px]">
+                  {isLoading ? (
+                     <div className="flex flex-col items-center justify-center h-64 text-slate-400 gap-2">
+                       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                       <p className="text-sm">Cargando base de datos...</p>
+                     </div>
+                  ) : (
+                     <MemberTable 
+                       members={filteredMembers} 
+                       onMemberClick={handleMemberClick} 
+                     />
+                  )}
+               </div>
+
+               {/* 2. TABLA DE ÚLTIMOS INGRESOS (Movida aquí para simetría) */}
+               <div className="bg-white rounded-2xl shadow-sm border border-slate-200/60 overflow-hidden p-6">
+                  <div className="flex items-center gap-2 mb-4">
+                    <History className="text-slate-400 w-5 h-5" />
+                    <h2 className="text-lg font-bold text-slate-700">Últimos Ingresos</h2>
+                  </div>
+                  
+                  <div className="overflow-auto max-h-[300px]">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="text-left text-gray-400 text-xs uppercase tracking-wider border-b border-gray-100">
+                          <th className="pb-3 pl-2">Hora</th>
+                          <th className="pb-3">Socio</th>
+                          <th className="pb-3">DNI</th>
+                          <th className="pb-3 text-center">Acceso</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-50">
+                        {logs.map((log: any) => (
+                          <tr key={log.id} className="hover:bg-slate-50 transition-colors">
+                            <td className="py-3 pl-2 text-slate-500 font-mono">
+                              {new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </td>
+                            <td className="py-3 font-medium text-slate-700">{log.user?.fullName}</td>
+                            <td className="py-3 text-slate-400">{log.user?.dni}</td>
+                            <td className="py-3 text-center">
+                              <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide ${
+                                log.status === 'GRANTED' 
+                                  ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' 
+                                  : 'bg-rose-100 text-rose-700 border border-rose-200'
+                              }`}>
+                                {log.status === 'GRANTED' ? 'Permitido' : 'Rechazado'}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                        {logs.length === 0 && (
+                          <tr>
+                            <td colSpan={4} className="text-center py-8 text-slate-400 italic">
+                              No hay registros de ingreso hoy.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
                   </div>
                </div>
+
+            </div>
+
+            {/* COLUMNA DERECHA (WIDGETS) - Ocupa 1 espacio */}
+            <div className="lg:col-span-1 space-y-6"> 
+               {/* CÁMARA */}
+               <DashboardScanner /> 
+               
+               {/* KPI SOCIOS ACTIVOS */}
+               <div className="bg-blue-600 rounded-2xl p-6 text-white shadow-xl shadow-blue-600/20 relative overflow-hidden">
+                  <div className="relative z-10">
+                    <p className="text-blue-100 text-sm font-medium mb-1 uppercase tracking-wider">Socios Activos</p>
+                    <div className="flex items-baseline gap-2">
+                      <p className="text-5xl font-bold">{members.filter(m => m.status === 'active').length}</p>
+                      <span className="text-blue-200 text-lg">/ {members.length}</span>
+                    </div>
+                  </div>
+                  {/* Decoración de fondo */}
+                  <div className="absolute -right-6 -bottom-6 w-32 h-32 bg-white/10 rounded-full blur-2xl"></div>
+               </div>
+
+               {/* Aquí podrías agregar más widgets a futuro (ej: Recaudación del mes) */}
             </div>
 
           </div>
@@ -150,36 +210,6 @@ export default function DashboardPage() {
           {/* --- MODALES --- */}
           <MemberDetailModal member={selectedMember} open={detailModalOpen} onOpenChange={setDetailModalOpen} />
           <CreateMemberModal open={createModalOpen} onOpenChange={setCreateModalOpen} onSuccess={() => fetchUsers()} />
-
-          <div className="bg-white p-4 rounded-lg shadow mt-6">
-            <h2 className="text-xl font-bold mb-4">Últimos Ingresos</h2>
-            <table className="w-full">
-              <thead>
-                <tr className="text-left text-gray-500">
-                  <th>Hora</th>
-                  <th>Usuario</th>
-                  <th>Estado</th>
-                </tr>
-              </thead>
-              <tbody>
-                {logs.map((log: any) => (
-                  <tr key={log.id} className="border-t">
-                    <td className="py-2">
-                      {new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </td>
-                    <td className="py-2 font-medium">{log.user?.fullName || 'Desconocido'}</td>
-                    <td className="py-2">
-                      <span className={`px-2 py-1 rounded text-xs ${
-                        log.status === 'GRANTED' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                      }`}>
-                        {log.status === 'GRANTED' ? 'Permitido' : 'Rechazado'}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
 
         </div>
       </main>

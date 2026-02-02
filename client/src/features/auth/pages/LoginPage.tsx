@@ -6,6 +6,13 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { Loader2, ArrowRight, Lock, User } from "lucide-react";
 
+// Definimos qué esperamos recibir del servidor
+interface LoginResponse {
+  name: string;
+  role?: string; 
+  // ... otros campos
+}
+
 export default function LoginPage() {
   const [dni, setDni] = useState("");
   const [password, setPassword] = useState("");
@@ -17,25 +24,28 @@ export default function LoginPage() {
     setIsLoading(true);
     
     try {
-      const { data } = await api.post("/auth/login", { dni, password });
+      // 1. Petición al Backend
+      const { data } = await api.post<LoginResponse>("/auth/login", { dni, password });
       
-      // Guardamos sesión
+      // 2. Guardamos sesión (CRÍTICO)
       localStorage.setItem("gym_user", JSON.stringify(data));
       
       toast.success(`Bienvenido, ${data.name.split(" ")[0]}`);
       
-     // Guardamos sesión
-      localStorage.setItem("gym_user", JSON.stringify(data));
-      
-      toast.success(`Bienvenido, ${data.name.split(" ")[0]}`);
-      
-      // 👇👇👇 AQUÍ ESTÁ EL CAMBIO 👇👇👇
-      if (data.role === 'ADMIN') {
+      // 3. Depuración (Míralo en la consola con F12 si falla)
+      console.log("LOGIN EXITOSO:", data);
+
+      // 4. Redirección Robusta
+      // Convertimos a mayúsculas por si el backend manda "admin" en minúscula
+      const userRole = (data.role || "MEMBER").toUpperCase(); 
+
+      if (userRole === "ADMIN") {
+        console.log("Redirigiendo a ADMIN...");
         navigate("/admin");
       } else {
-        navigate("/");
+        console.log("Redirigiendo a APP...");
+        navigate("/"); // <--- CAMBIADO: Antes tenías "/"
       }
-      // 👆👆👆 FIN DEL CAMBIO 👆👆👆
       
     } catch (error) {
       console.error(error);
@@ -72,17 +82,21 @@ export default function LoginPage() {
           <div className="space-y-4 bg-white/5 p-1 rounded-2xl border border-white/10 backdrop-blur-sm">
             <div className="relative group">
               <User className="absolute left-4 top-3.5 h-5 w-5 text-slate-500 group-focus-within:text-blue-500 transition-colors" />
+              
+              {/* --- AQUÍ ESTABA EL ERROR DEL NÚMERO --- */}
               <Input 
                 placeholder="DNI / Usuario" 
                 value={dni} 
                 onChange={(e) => setDni(e.target.value)} 
                 className="pl-12 bg-transparent border-transparent text-white placeholder:text-slate-600 h-12 focus-visible:ring-0 focus-visible:bg-white/5 rounded-xl transition-all"
-                type="number"
+                type="text" // <--- CAMBIADO A TEXT (Antes era number)
                 autoFocus
               />
+              {/* --------------------------------------- */}
+
             </div>
             
-            <div className="h-[1px] bg-white/10 mx-2" /> {/* Separador sutil */}
+            <div className="h-[1px] bg-white/10 mx-2" />
 
             <div className="relative group">
               <Lock className="absolute left-4 top-3.5 h-5 w-5 text-slate-500 group-focus-within:text-blue-500 transition-colors" />
@@ -120,7 +134,6 @@ export default function LoginPage() {
 
       </div>
       
-      {/* Footer legal */}
       <p className="absolute bottom-6 text-slate-600 text-[10px] font-medium tracking-widest uppercase opacity-50">
         GymOS Platform © 2026
       </p>
