@@ -16,7 +16,7 @@ model User {
   
   // 👇 AGREGA ESTA LÍNEA 👇
   password        String    @default("123456") 
-  role            String    @default("MEMBER") // Puede ser "MEMBER" o "ADMIN"
+  role            String    @default("MEMBER")
 
   email           String?   // Opcional
   photoUrl        String?
@@ -41,6 +41,7 @@ model Payment {
   amount    Decimal  @db.Decimal(10, 2)
   method    String   // "CASH", "TRANSFER", "MP"
   date      DateTime @default(now())
+  months    Int      @default(1)
 }
 
 model AccessLog {

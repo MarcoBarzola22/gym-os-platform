@@ -1,57 +1,116 @@
 import { Router } from 'express';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../prisma';
 
 const router = Router();
-const prisma = new PrismaClient();
 
-// POST /api/payments
-// Renovar suscripción
+// COBRAR (Soporta varios meses)
 router.post('/', async (req, res) => {
   try {
-    const { userId, amount, method } = req.body; // method puede ser 'EFECTIVO', 'TRANSFERENCIA', etc.
+    // Recibimos "months" del frontend. Si no llega, asumimos 1.
+    const { userId, amount, method, months = 1 } = req.body; 
 
-    // 1. Buscar al usuario
     const user = await prisma.user.findUnique({ where: { id: Number(userId) } });
     if (!user) return res.status(404).json({ error: "Usuario no encontrado" });
 
-    // 2. Calcular nueva fecha
-    // Si ya estaba vencido, cuenta 30 días desde HOY.
-    // Si todavía no vencía, le suma 30 días a lo que le quedaba.
+    // 1. LÓGICA DE FECHAS
     const now = new Date();
-    let newExpirationDate = user.expirationDate && user.expirationDate > now 
-      ? new Date(user.expirationDate) 
-      : new Date();
-    
-    newExpirationDate.setDate(newExpirationDate.getDate() + 30);
+    let newExpiration = new Date();
 
-    // 3. Guardar el pago y actualizar usuario en una "Transacción" (todo o nada)
+    // Si el usuario tiene fecha futura válida, sumamos desde AHÍ.
+    // Si es null o ya pasó, sumamos desde HOY.
+    if (user.expirationDate && new Date(user.expirationDate) > now) {
+      newExpiration = new Date(user.expirationDate);
+    } else {
+      newExpiration = new Date();
+    }
+
+    // 2. MATEMÁTICA PURA (Arreglo del bug de los "2 días")
+    const daysToAdd = Number(months) * 30; // <--- ESTO ES LO IMPORTANTE
+    newExpiration.setDate(newExpiration.getDate() + daysToAdd);
+    
+    // 3. SETEAR AL FINAL DEL DÍA
+    newExpiration.setHours(23, 59, 59, 999);
+
+    // 4. TRANSACCIÓN
     const result = await prisma.$transaction([
-      // A. Crear registro de pago
       prisma.payment.create({
         data: {
           userId: Number(userId),
           amount: Number(amount),
           method: method || 'EFECTIVO',
+          months: Number(months), // Guardamos cuántos meses pagó
           date: new Date()
         }
       }),
-      // B. Actualizar usuario
       prisma.user.update({
         where: { id: Number(userId) },
         data: {
           isActive: true,
-          expirationDate: newExpirationDate,
+          expirationDate: newExpiration,
           lastPaymentDate: new Date()
         }
       })
     ]);
 
-    // Devolvemos el usuario actualizado (el segundo elemento del array transaction)
     res.json(result[1]);
 
   } catch (error) {
     console.error("Error procesando pago:", error);
     res.status(500).json({ error: "Error al procesar el pago" });
+  }
+});
+
+// OBTENER HISTORIAL DE PAGOS DEL USUARIO
+router.get('/:userId', async (req, res) => {
+  try {
+    const payments = await prisma.payment.findMany({
+      where: { userId: Number(req.params.userId) },
+      orderBy: { date: 'desc' },
+      take: 5 // Traemos los últimos 5
+    });
+    res.json(payments);
+  } catch (error) {
+    res.status(500).json({ message: 'Error al traer pagos' });
+  }
+});
+
+// CANCELAR PAGO (Reversa)
+router.delete('/:paymentId', async (req, res) => {
+  try {
+    const paymentId = Number(req.params.paymentId);
+
+    // 1. Buscamos el pago para saber de quién es y cuántos meses tenía
+    const payment = await prisma.payment.findUnique({
+      where: { id: paymentId },
+      include: { user: true }
+    });
+
+    if (!payment) return res.status(404).json({ message: 'Pago no encontrado' });
+
+    // 2. Calculamos los días a RESTAR
+    const daysToRemove = payment.months * 30;
+    
+    // 3. Calculamos la nueva fecha (hacia atrás)
+    const currentExpiration = new Date(payment.user.expirationDate || new Date());
+    const newExpiration = new Date(currentExpiration);
+    newExpiration.setDate(newExpiration.getDate() - daysToRemove);
+
+    // 4. Actualizamos usuario y borramos el pago (Transacción)
+    await prisma.$transaction([
+      prisma.user.update({
+        where: { id: payment.userId },
+        data: { expirationDate: newExpiration }
+      }),
+      prisma.payment.delete({
+        where: { id: paymentId }
+      })
+    ]);
+
+    res.json({ success: true, message: 'Pago anulado correctamente' });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Error al anular pago' });
   }
 });
 
